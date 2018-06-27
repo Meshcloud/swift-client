@@ -3,6 +3,7 @@
 const URL = require('url-parse');
 const requestp = require('request-promise');
 
+const SwiftAccount = require('./SwiftAccount');
 const SwiftContainer = require('./SwiftContainer');
 const SwiftEntity = require('./SwiftEntity');
 const SwiftAuthenticator = require('./SwiftAuthenticator');
@@ -11,7 +12,7 @@ const KeystoneV3Authenticator = require('./KeystoneV3Authenticator');
 class SwiftClient extends SwiftEntity {
     constructor(authenticator) {
         super('Container', null, authenticator);
-        
+
     }
 
     create(name, publicRead, meta, extra) {
@@ -45,6 +46,10 @@ class SwiftClient extends SwiftEntity {
             uri: infoUrl,
             json: true
         })
+    }
+
+    account() {
+        return new SwiftAccount(this.authenticator);
     }
 
     container(name) {

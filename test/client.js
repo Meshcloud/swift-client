@@ -3,6 +3,7 @@
 const expect = require('chai').expect;
 const fs = require('fs');
 const stream = require('stream');
+const requestp = require('request-promise');
 const SwiftClient = require('../index');
 
 const credentials = require('./credentials.ksv3.json');
@@ -48,6 +49,58 @@ describe('SwiftClient', function () {
             }));
     });
 
+    describe('#account', () => {
+        let account;
+
+        before(() => {
+            account = client.account();
+        });
+
+        it('should update the account metadata', async () => {
+            const meta = { 'temp-url-key': '12345' };
+
+            await account.update(meta);
+            const result = await account.meta();
+
+            expect(result).to.eql(meta);
+        });
+
+        describe('#tempUrl', () => {
+            const meta = { 'temp-url-key': '12345' };
+            const containerName = 'swift-client-test-tmpurl';
+            const objectName = 'test.txt';
+
+            before(async () => {
+                await account.update(meta);
+                await client.create(containerName);
+
+                const container = client.container(containerName);
+                const s = fs.createReadStream('test/test.txt');
+                container.create(objectName, s);
+            });
+
+            after(() => {
+                // client.container(containerName).delete(objectName);
+            });
+
+            it('should generate downloadable temp url', async () => {
+                const validForSeconds = 1000;
+                const expires = Math.floor(new Date().getTime() / 1000) + validForSeconds;
+
+                const tempUrl = await account.tempUrl(containerName, objectName, expires, meta.tempurlkey);
+
+                console.log(tempUrl);
+
+                const response = await requestp({
+                    method: 'GET',
+                    uri: tempUrl,
+                    resolveWithFullResponse: true
+                });
+
+                expect(response.body).to.equal('Hello, world!\n');
+            });
+        });
+    });
 
     describe('SwiftContainer', () => {
         let container;
@@ -73,7 +126,6 @@ describe('SwiftClient', function () {
             it('should get the object', () => {
                 const s = new stream.Writable();
                 let text = '';
-
                 s._write = chunk => {
                     text += chunk.toString();
                 };
